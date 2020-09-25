@@ -1,0 +1,87 @@
+version: '3.1'
+services:
+    nginx-proxy:
+        image: jwilder/nginx-proxy
+        ports:
+         - "80:80"
+         - "443:443"
+        volumes:
+          - /var/run/docker.sock:/tmp/docker.sock:ro
+          - ./certs:/etc/nginx/certs:ro
+          - ./vhostd:/etc/nginx/vhost.d
+          - ./html:/usr/share/nginx/html
+        labels:
+          - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+
+    letsencrypt:
+#        image: jrcs/letsencrypt-nginx-proxy-companion
+        image: jrcs/letsencrypt-nginx-proxy-companion:v1.13
+        restart: always
+        environment:
+        - NGINX_PROXY_CONTAINER=nginx-proxy
+#        - DEFAULT_EMAIL=jose.moreno@comunidaddojo.org
+        volumes:
+          - ./certs:/etc/nginx/certs:rw
+          - ./vhostd:/etc/nginx/vhost.d
+          - ./html:/usr/share/nginx/html
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    wordpress:
+        build: 
+            context: ./custom/wordpress
+            dockerfile: dockerfile
+
+        #image: wordpress:secure
+        container_name: wordpress_1
+        links:
+         - mariadb:mysql
+        expose:
+         - 80
+        environment:
+         - WORDPRESS_DB_PASSWORD=qwertyqwerty
+         - WORDPRESS_DB_USER=userwp
+         - WORDPRESS_DB_NAME=wpdb
+         - "VIRTUAL_HOST=waf.utponline.xyz"
+         - "LETSENCRYPT_HOST=waf.utponline.xyz"
+         - "LETSENCRYPT_EMAIL=jose.moreno@comunidaddojo.org"
+        volumes:
+         - ./web1/html:/var/www/html
+
+    mariadb:
+        image: mariadb
+        environment:
+         - MYSQL_ROOT_PASSWORD=qwerty123456789
+         - MYSQL_DATABASE=wpdb
+         - MYSQL_USER=userwp
+         - MYSQL_PASSWORD=qwertyqwerty
+        volumes:
+         - ./database:/var/lib/mysql
+
+    wordpress-vuln:
+        image: wordpress:latest
+        container_name: wordpress_2
+        links:
+         - mariadb2:mysql
+        expose:
+         - 80
+        environment:
+         - WORDPRESS_DB_PASSWORD=qwertyqwerty
+         - WORDPRESS_DB_USER=userwp
+         - WORDPRESS_DB_NAME=wpdb
+         - "VIRTUAL_HOST=vuln.utponline.xyz"
+         - "LETSENCRYPT_HOST=vuln.utponline.xyz"
+         - "LETSENCRYPT_EMAIL=jose.moreno@comunidaddojo.org"
+        volumes:
+         - ./web2/html:/var/www/html
+
+    mariadb2:
+        image: mariadb
+        environment:
+         - MYSQL_ROOT_PASSWORD=qwerty123456789
+         - MYSQL_DATABASE=wpdb
+         - MYSQL_USER=userwp
+         - MYSQL_PASSWORD=qwertyqwerty
+        volumes:
+         - ./database2:/var/lib/mysql
+
+

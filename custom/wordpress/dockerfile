@@ -1,0 +1,17 @@
+FROM wordpress:latest
+
+RUN apt-get update && \
+	apt-get install -y  --no-install-recommends ssl-cert libapache2-mod-security2 libapache2-mod-qos git && \
+	rm -r /var/lib/apt/lists/* && \
+	a2enmod ssl && \
+	a2ensite default-ssl
+RUN mv /etc/modsecurity/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf && \
+	sed -i 's/SecRuleEngine DetectionOnly/SecRuleEngine on/g' /etc/modsecurity/modsecurity.conf
+RUN git clone https://github.com/SpiderLabs/owasp-modsecurity-crs.git /usr/share/modsecurity-crs
+COPY ./security2.conf /etc/apache2/mods-enabled/security2.conf
+#se comenta porque anteriormente lo copiaba de una fuente local ahora se clona el repositorio
+#COPY ./owasp-modsecurity-crs /usr/share/modsecurity-crs
+RUN mv /usr/share/modsecurity-crs/crs-setup.conf.example /usr/share/modsecurity-crs/crs-setup.conf
+
+EXPOSE 80
+EXPOSE 443
